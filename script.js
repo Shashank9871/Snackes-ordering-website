@@ -268,11 +268,40 @@ document.querySelector("#checkout-button").addEventListener("click", () => {
   showToast("Thanks for your order! This demo checkout is frontend-only.");
 });
 
-document.querySelector("#newsletter-form").addEventListener("submit", (event) => {
+document.querySelector("#newsletter-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const emailInput = document.querySelector("#newsletter-email");
-  document.querySelector("#newsletter-message").textContent = "You're on the list. Keep an eye on your inbox!";
-  emailInput.value = "";
+  const form = event.currentTarget;
+  const message = document.querySelector("#newsletter-message");
+  if (window.location.protocol === "file:") {
+    message.textContent = "Open this page through a web server to submit your email.";
+    return;
+  }
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  message.textContent = "Sending...";
+
+  try {
+    const response = await fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      headers: { Accept: "application/json" },
+    });
+    const result = await response.json();
+
+    const wasAccepted = result.success === true || result.success === "true";
+    if (!response.ok || !wasAccepted) {
+      throw new Error(result.message || "The signup could not be sent.");
+    }
+
+    message.textContent = "Thanks! Your signup has been sent.";
+    form.reset();
+  } catch (error) {
+    console.error("Newsletter signup failed:", error);
+    message.textContent = "Sorry, we couldn't send that. Please try again.";
+  } finally {
+    submitButton.disabled = false;
+  }
 });
 
 applyTheme(localStorage.getItem("nibble-theme") || "light");
